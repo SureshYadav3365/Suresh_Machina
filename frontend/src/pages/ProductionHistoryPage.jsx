@@ -379,6 +379,13 @@ export default function ProductionHistoryPage({ onSelectDateForDashboard, onProd
                       </div>
 
                       <div className="day-metric-item d-none-sm">
+                        <span className="metric-label">Shift Window:</span>
+                        <span className="metric-value-sub" style={{ color: 'var(--color-blue)' }}>
+                          {day.shiftStartTime && day.shiftEndTime ? `${day.shiftStartTime} - ${day.shiftEndTime}` : '8 Hours'}
+                        </span>
+                      </div>
+
+                      <div className="day-metric-item d-none-sm">
                         <span className="metric-label">Avg Speed:</span>
                         <span className="metric-value-sub">
                           {day.averagePerHour.toLocaleString('en-IN')} pcs/hr

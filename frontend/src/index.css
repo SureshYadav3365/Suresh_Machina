@@ -1869,3 +1869,241 @@ html, body {
     display: none;
   }
 }
+
+/* ==========================================================================
+   15. DYNAMIC SHIFT TIME MANAGEMENT & COCKPIT CONTROLS
+   ========================================================================== */
+
+.shift-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  padding: 1.25rem 1.6rem;
+  margin-bottom: 1.65rem;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.shift-control-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.shift-badge-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.shift-time-picker-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.time-picker-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(10, 19, 38, 0.85);
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.clock-icon-cyan {
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
+.shift-time-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.time-picker-input {
+  background: transparent !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-family: var(--font-mono) !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  padding: 0.15rem 0.35rem !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  color-scheme: dark;
+}
+
+.time-picker-input:focus {
+  outline: none;
+}
+
+.shift-window-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-md);
+  font-size: 0.84rem;
+}
+
+.pill-muted {
+  color: var(--text-muted);
+}
+
+.pill-highlight {
+  color: #38bdf8;
+  font-weight: 800;
+  font-family: var(--font-mono);
+}
+
+.shift-status-metrics-col {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.shift-metric-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.metric-micro-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.metric-time-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+  font-family: var(--font-mono);
+}
+
+.metric-time-value.value-cyan {
+  color: #38bdf8;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
+.shift-status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-full);
+}
+
+.tag-ongoing {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+}
+
+.tag-completed {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.tag-upcoming {
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.pulse-indicator-cyan {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
+  animation: pulseCyan 1.8s infinite;
+}
+
+@keyframes pulseCyan {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.6; }
+}
+
+.slot-active-tag {
+  color: #38bdf8;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.slot-idle-tag {
+  color: var(--text-dim);
+}
+
+/* Time Status Badges in Production Table */
+.time-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.pill-ongoing {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.pill-completed {
+  background: rgba(148, 163, 184, 0.1);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.pill-upcoming {
+  background: rgba(100, 116, 139, 0.08);
+  color: #64748b;
+  border: 1px solid rgba(100, 116, 139, 0.15);
+}
+
+.pulse-dot-cyan {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 6px #38bdf8;
+  animation: pulseCyan 1.8s infinite;
+}
+
+/* Row highlighting for active ongoing slot */
+.row-ongoing {
+  background: rgba(56, 189, 248, 0.09) !important;
+  border-left: 3px solid #38bdf8;
+}
+
+.row-ongoing td {
+  border-color: rgba(56, 189, 248, 0.2) !important;
+}

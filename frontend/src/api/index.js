@@ -42,6 +42,11 @@ export const api = {
     request(`/production/${id}`, {
       method: 'DELETE',
     }),
+  setDailyShift: (data) =>
+    request('/production/shift', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   // Production History
   getProductionHistory: (params = {}) => {

@@ -45,6 +45,17 @@ export default function App() {
   const [allTimePieces, setAllTimePieces] = useState(0);
   const [currentMonthLabel, setCurrentMonthLabel] = useState('');
 
+  // Dynamic Shift Time Management
+  const [shiftStartTime, setShiftStartTime] = useState('08:00');
+  const [shiftEndTime, setShiftEndTime] = useState('16:00');
+  const [shiftHours, setShiftHours] = useState(8);
+  const [shiftStatus, setShiftStatus] = useState('upcoming'); // 'upcoming' | 'ongoing' | 'completed'
+  const [shiftElapsedFormatted, setShiftElapsedFormatted] = useState('0m');
+  const [shiftRemainingFormatted, setShiftRemainingFormatted] = useState('8h 0m');
+  const [shiftProgressPercent, setShiftProgressPercent] = useState(0);
+  const [currentSlotNumber, setCurrentSlotNumber] = useState(null);
+  const [isUpdatingShiftTime, setIsUpdatingShiftTime] = useState(false);
+
   const [completedHours, setCompletedHours] = useState(0);
   const [averagePerHour, setAveragePerHour] = useState(0);
   const [todayExpenses, setTodayExpenses] = useState(0);
@@ -82,6 +93,16 @@ export default function App() {
         setHasRevenueRecorded(res.hasRevenueRecorded || false);
         setEstimatedProfit(res.estimatedProfit !== undefined ? res.estimatedProfit : null);
 
+        // Shift Timing Details
+        setShiftStartTime(res.shiftStartTime || '08:00');
+        setShiftEndTime(res.shiftEndTime || '16:00');
+        setShiftHours(res.shiftHours || 8);
+        setShiftStatus(res.shiftStatus || 'upcoming');
+        setShiftElapsedFormatted(res.shiftElapsedFormatted || '0m');
+        setShiftRemainingFormatted(res.shiftRemainingFormatted || '8h 0m');
+        setShiftProgressPercent(res.shiftProgressPercent !== undefined ? res.shiftProgressPercent : 0);
+        setCurrentSlotNumber(res.currentSlotNumber || null);
+
         // If not editing, default next hour to first unrecorded slot
         const firstUnrecorded = (res.hours || []).find((h) => !h.isRecorded);
         if (firstUnrecorded && !editingId) {
@@ -99,6 +120,16 @@ export default function App() {
   useEffect(() => {
     loadData(selectedDate);
   }, [selectedDate, loadData]);
+
+  // Periodic refresh (every 30s) to keep shift timing & active hour live
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (activeTab === 'dashboard' && selectedDate) {
+        loadData(selectedDate);
+      }
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [activeTab, selectedDate, loadData]);
 
   const showMessage = (text, type = 'success') => {
     setMessage({ text, type });
@@ -121,6 +152,7 @@ export default function App() {
       hourTime: currentSlot ? currentSlot.hourTime : `Hour ${hourNumber}`,
       pieces: Number(pieces),
       notes: notes.trim(),
+      shiftStartTime,
     };
 
     try {
@@ -214,7 +246,7 @@ export default function App() {
     return d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
   };
 
-  const shiftProgressPercent = Math.min(100, Math.round((completedHours / 8) * 100));
+  const loggedHoursPercent = Math.min(100, Math.round((completedHours / 8) * 100));
 
   return (
     <div className="layout-wrapper">
@@ -277,7 +309,7 @@ export default function App() {
             <span className="status-dot"></span>
             <span>MongoDB Connected</span>
           </div>
-          <div className="shift-standard-note">Standard 8-Hour Shift</div>
+          <div className="shift-standard-note">Configurable 8-Hour Shift</div>
         </div>
       </aside>
 
@@ -336,6 +368,83 @@ export default function App() {
           {/* ================= TAB 1: PRODUCTION DASHBOARD ================= */}
           {activeTab === 'dashboard' && (
             <div>
+              {/* SHIFT TIME MANAGEMENT & COCKPIT CONTROLS */}
+              <div className="shift-control-bar">
+                <div className="shift-control-col">
+                  <span className="shift-badge-title">
+                    <Clock size={14} className="clock-icon-cyan" />
+                    Actual Machine Shift Time
+                  </span>
+                  <div className="shift-time-picker-wrapper">
+                    <div className="time-picker-input-group">
+                      <label htmlFor="shiftStartInput" className="shift-time-label">
+                        Shift Start:
+                      </label>
+                      <input
+                        id="shiftStartInput"
+                        type="time"
+                        className="time-picker-input"
+                        value={shiftStartTime}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          if (!val) return;
+                          setShiftStartTime(val);
+                          try {
+                            const res = await api.setDailyShift({
+                              date: selectedDate,
+                              startTime: val,
+                              shiftHours: 8,
+                            });
+                            if (res.success) {
+                              showMessage(`Shift start time set to ${val} (8-hour shift ends at ${res.shiftEndTime})`, 'success');
+                              await loadData(selectedDate);
+                            }
+                          } catch (err) {
+                            showMessage(err.message || 'Failed to update shift start time', 'error');
+                          }
+                        }}
+                        title="Select or enter the actual time your machine started working today"
+                      />
+                    </div>
+                    <div className="shift-window-pill">
+                      <span className="pill-muted">Calculated 8-Hr End:</span>
+                      <span className="pill-highlight">{shiftEndTime}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="shift-status-metrics-col">
+                  <div className="shift-metric-box">
+                    <span className="metric-micro-label">Shift Status</span>
+                    <span className={`shift-status-tag tag-${shiftStatus}`}>
+                      {shiftStatus === 'ongoing' && <span className="pulse-indicator-cyan" />}
+                      {shiftStatus === 'ongoing' ? 'In Progress' : shiftStatus === 'completed' ? 'Shift Finished' : 'Upcoming'}
+                    </span>
+                  </div>
+
+                  <div className="shift-metric-box">
+                    <span className="metric-micro-label">Elapsed Time</span>
+                    <span className="metric-time-value">{shiftElapsedFormatted}</span>
+                  </div>
+
+                  <div className="shift-metric-box">
+                    <span className="metric-micro-label">Remaining Time</span>
+                    <span className="metric-time-value value-cyan">{shiftRemainingFormatted}</span>
+                  </div>
+
+                  <div className="shift-metric-box">
+                    <span className="metric-micro-label">Active Working Slot</span>
+                    <div className="metric-time-value">
+                      {currentSlotNumber ? (
+                        <span className="slot-active-tag">Hour {currentSlotNumber} ({hoursData.find((h) => h.hourNumber === currentSlotNumber)?.hourTime})</span>
+                      ) : (
+                        <span className="slot-idle-tag">—</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* 1. THREE SEPARATE PRODUCTION SUMMARY CARDS (Today, Monthly, All-Time) */}
               <div className="summary-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: '1.25rem' }}>
                 {/* 1. Today's Production */}
@@ -395,13 +504,13 @@ export default function App() {
                 {/* Shift Hours Completed */}
                 <div className="summary-card card-shift">
                   <div className="card-top">
-                    <span className="summary-label">Shift Hours Progress</span>
+                    <span className="summary-label">8-Hour Shift Progress</span>
                     <div className="card-icon-wrap icon-shift">
                       <Clock size={18} />
                     </div>
                   </div>
                   <div className="summary-value value-shift" style={{ fontSize: '1.65rem' }}>
-                    {completedHours}/8 <span className="unit">hours completed</span>
+                    {completedHours}/8 <span className="unit">hours logged</span>
                   </div>
                   <div className="card-progress-area">
                     <div className="progress-bar-bg">
@@ -411,7 +520,13 @@ export default function App() {
                       />
                     </div>
                     <div className="progress-label-row">
-                      <span>{shiftProgressPercent}% shift complete</span>
+                      <span>
+                        {shiftStatus === 'ongoing'
+                          ? `${shiftElapsedFormatted} elapsed (${shiftRemainingFormatted} left)`
+                          : shiftStatus === 'completed'
+                          ? 'Shift complete (8h)'
+                          : 'Shift upcoming'}
+                      </span>
                       <span className="avg-speed-badge">
                         Avg: {averagePerHour.toLocaleString('en-IN')} pcs/hr
                       </span>
@@ -565,11 +680,15 @@ export default function App() {
                         onChange={(e) => setHourNumber(Number(e.target.value))}
                         disabled={!!editingId}
                       >
-                        {hoursData.map((h) => (
-                          <option key={h.hourNumber} value={h.hourNumber}>
-                            Hour {h.hourNumber} ({h.hourTime}) {h.isRecorded ? '✓ Logged' : '— Pending'}
-                          </option>
-                        ))}
+                        {hoursData.map((h) => {
+                          const timeLabel = h.timeStatus === 'ongoing' ? '● Active' : h.timeStatus === 'completed' ? 'Passed' : 'Upcoming';
+                          const recLabel = h.isRecorded ? '✓ Logged' : 'Pending';
+                          return (
+                            <option key={h.hourNumber} value={h.hourNumber}>
+                              Hour {h.hourNumber} ({h.hourTime}) — [{timeLabel}] [{recLabel}]
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
 
@@ -625,7 +744,7 @@ export default function App() {
                       8-Hour Shift Production Records
                     </h2>
                     <span className="table-header-sub">
-                      Scheduled shift: 08:00 to 16:00 • 8 One-hour production slots
+                      Working Shift: <strong>{shiftStartTime} to {shiftEndTime}</strong> (8 Hours) • 8 One-hour production slots based on actual machine start time
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -648,6 +767,7 @@ export default function App() {
                         <tr>
                           <th>Shift Hour</th>
                           <th>Time Slot</th>
+                          <th>Shift Time Status</th>
                           <th style={{ textAlign: 'right' }}>Pieces Produced</th>
                           <th>Status</th>
                           <th>Notes</th>
@@ -658,12 +778,29 @@ export default function App() {
                         {hoursData.map((slot) => (
                           <tr
                             key={slot.hourNumber}
-                            className={slot.isRecorded ? 'row-logged' : 'row-pending'}
+                            className={`${slot.isRecorded ? 'row-logged' : 'row-pending'} ${slot.isOngoing ? 'row-ongoing' : ''}`}
                           >
                             <td>
                               <span className="hour-badge">Hour {slot.hourNumber}</span>
                             </td>
                             <td className="time-slot">{slot.hourTime}</td>
+                            <td>
+                              {slot.timeStatus === 'ongoing' && (
+                                <span className="time-status-pill pill-ongoing">
+                                  <span className="pulse-dot-cyan"></span> Ongoing
+                                </span>
+                              )}
+                              {slot.timeStatus === 'completed' && (
+                                <span className="time-status-pill pill-completed">
+                                  <CheckCircle2 size={12} /> Completed
+                                </span>
+                              )}
+                              {slot.timeStatus === 'upcoming' && (
+                                <span className="time-status-pill pill-upcoming">
+                                  <Clock size={12} /> Upcoming
+                                </span>
+                              )}
+                            </td>
                             <td className="pieces-cell">
                               {slot.isRecorded ? (
                                 <span className="pieces-value">
@@ -725,14 +862,14 @@ export default function App() {
                       </tbody>
                       <tfoot>
                         <tr className="total-row">
-                          <td colSpan="2" className="total-label">
+                          <td colSpan="3" className="total-label">
                             Total Daily Production:
                           </td>
                           <td className="total-pieces">
                             <AnimatedNumber value={todayPieces} suffix=" pcs" />
                           </td>
                           <td colSpan="3" className="total-note">
-                            {completedHours} of 8 hours logged ({shiftProgressPercent}% shift complete)
+                            {completedHours} of 8 hours logged ({loggedHoursPercent}% logged)
                           </td>
                         </tr>
                       </tfoot>

@@ -1,20 +1,145 @@
 const Production = require('../models/Production');
 const Expense = require('../models/Expense');
 const DailySales = require('../models/DailySales');
+const DailyShift = require('../models/DailyShift');
 
-// Standard 8 hourly shift slots
-const STANDARD_HOURS = [
-  { hourNumber: 1, hourTime: '08:00 - 09:00' },
-  { hourNumber: 2, hourTime: '09:00 - 10:00' },
-  { hourNumber: 3, hourTime: '10:00 - 11:00' },
-  { hourNumber: 4, hourTime: '11:00 - 12:00' },
-  { hourNumber: 5, hourTime: '12:00 - 13:00' },
-  { hourNumber: 6, hourTime: '13:00 - 14:00' },
-  { hourNumber: 7, hourTime: '14:00 - 15:00' },
-  { hourNumber: 8, hourTime: '15:00 - 16:00' },
-];
+/**
+ * Normalizes and validates time format HH:mm
+ */
+const normalizeTime = (timeStr, defaultTime = '08:00') => {
+  if (!timeStr) return defaultTime;
+  let str = String(timeStr).trim();
+  if (/^\d:\d\d$/.test(str)) str = '0' + str;
+  if (/^([01]\d|2[0-3]):([0-5]\d)$/.test(str)) return str;
+  return defaultTime;
+};
 
-// Helper to get today's date string YYYY-MM-DD in local time
+/**
+ * Computes 8 hourly shift slots and end time based on any arbitrary start time
+ */
+const computeShiftTimeDetails = (startTimeStr = '08:00', totalHours = 8) => {
+  const validStartTime = normalizeTime(startTimeStr, '08:00');
+  const [startH, startM] = validStartTime.split(':').map(Number);
+  const startTotalMinutes = startH * 60 + startM;
+
+  const formatTime = (totalMinutes) => {
+    const normalized = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+    const h = Math.floor(normalized / 60);
+    const m = normalized % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  };
+
+  const slots = [];
+  for (let i = 0; i < totalHours; i++) {
+    const slotStartMin = startTotalMinutes + i * 60;
+    const slotEndMin = slotStartMin + 60;
+    const startFormatted = formatTime(slotStartMin);
+    const endFormatted = formatTime(slotEndMin);
+
+    slots.push({
+      hourNumber: i + 1,
+      hourTime: `${startFormatted} - ${endFormatted}`,
+      startTime: startFormatted,
+      endTime: endFormatted,
+    });
+  }
+
+  const endTotalMinutes = startTotalMinutes + totalHours * 60;
+  const endTime = formatTime(endTotalMinutes);
+
+  return {
+    startTime: validStartTime,
+    endTime,
+    shiftHours: totalHours,
+    slots,
+  };
+};
+
+/**
+ * Computes elapsed and remaining shift time, progress percentage,
+ * and current ongoing / completed / upcoming slot statuses.
+ */
+const computeShiftMetrics = (dateStr, startTimeStr = '08:00', totalHours = 8, now = new Date()) => {
+  const validStartTime = normalizeTime(startTimeStr, '08:00');
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [sH, sM] = validStartTime.split(':').map(Number);
+
+  // Shift start in local calendar date
+  const shiftStartDate = new Date(y, m - 1, d, sH, sM, 0, 0);
+  const shiftEndDate = new Date(shiftStartDate.getTime() + totalHours * 60 * 60 * 1000);
+  const totalShiftMinutes = totalHours * 60;
+
+  let status = 'upcoming'; // 'upcoming' | 'ongoing' | 'completed'
+  let elapsedMinutes = 0;
+  let remainingMinutes = totalShiftMinutes;
+  let progressPercent = 0;
+  let currentSlotNumber = null;
+
+  const nowMs = now.getTime();
+  const startMs = shiftStartDate.getTime();
+  const endMs = shiftEndDate.getTime();
+
+  if (nowMs < startMs) {
+    status = 'upcoming';
+    elapsedMinutes = 0;
+    remainingMinutes = totalShiftMinutes;
+    progressPercent = 0;
+  } else if (nowMs >= endMs) {
+    status = 'completed';
+    elapsedMinutes = totalShiftMinutes;
+    remainingMinutes = 0;
+    progressPercent = 100;
+  } else {
+    status = 'ongoing';
+    elapsedMinutes = Math.floor((nowMs - startMs) / (60 * 1000));
+    remainingMinutes = Math.max(0, totalShiftMinutes - elapsedMinutes);
+    progressPercent = Math.min(100, Math.max(0, Math.round((elapsedMinutes / totalShiftMinutes) * 100)));
+  }
+
+  const formatDuration = (mins) => {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h === 0 && m === 0) return '0m';
+    if (h === 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}m`;
+  };
+
+  const slotMetrics = [];
+  for (let i = 0; i < totalHours; i++) {
+    const slotStart = new Date(shiftStartDate.getTime() + i * 60 * 60 * 1000);
+    const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
+
+    let timeStatus = 'upcoming';
+    if (nowMs >= slotEnd.getTime()) {
+      timeStatus = 'completed';
+    } else if (nowMs >= slotStart.getTime() && nowMs < slotEnd.getTime()) {
+      timeStatus = 'ongoing';
+      currentSlotNumber = i + 1;
+    } else {
+      timeStatus = 'upcoming';
+    }
+
+    slotMetrics.push({
+      hourNumber: i + 1,
+      timeStatus,
+      isOngoing: timeStatus === 'ongoing',
+    });
+  }
+
+  return {
+    status,
+    elapsedMinutes,
+    remainingMinutes,
+    elapsedFormatted: formatDuration(elapsedMinutes),
+    remainingFormatted: formatDuration(remainingMinutes),
+    progressPercent,
+    currentSlotNumber,
+    slotMetrics,
+  };
+};
+
+// Helper to get today's date string YYYY-MM-DD
 const getTodayDate = () => {
   const now = new Date();
   const y = now.getFullYear();
@@ -28,8 +153,35 @@ exports.getProduction = async (req, res) => {
   try {
     const date = req.query.date || getTodayDate();
 
-    // 1. Find all entries for this specific date
+    // 1. Look up DailyShift for this specific date
+    let dailyShift = await DailyShift.findOne({ date });
+    let shiftStartTime = dailyShift ? dailyShift.startTime : null;
+
+    // Existing production records for this date
     const records = await Production.find({ date }).sort({ hourNumber: 1 });
+
+    // If no DailyShift saved, deduce from existing records if available
+    if (!shiftStartTime && records.length > 0) {
+      const firstRec = records[0];
+      if (firstRec.hourTime && firstRec.hourTime.includes('-')) {
+        const slotStartStr = firstRec.hourTime.split('-')[0].trim();
+        if (/^([01]\d|2[0-3]):([0-5]\d)$/.test(slotStartStr)) {
+          const [hH, hM] = slotStartStr.split(':').map(Number);
+          const startMin = ((hH * 60 + hM - (firstRec.hourNumber - 1) * 60) + 24 * 60) % (24 * 60);
+          const sH = Math.floor(startMin / 60);
+          const sM = startMin % 60;
+          shiftStartTime = `${String(sH).padStart(2, '0')}:${String(sM).padStart(2, '0')}`;
+        }
+      }
+    }
+
+    // Fallback default if completely brand new date
+    if (!shiftStartTime) {
+      shiftStartTime = '08:00';
+    }
+
+    const shiftInfo = computeShiftTimeDetails(shiftStartTime, 8);
+    const shiftMetrics = computeShiftMetrics(date, shiftStartTime, 8);
 
     // Map records by hourNumber
     const recordMap = {};
@@ -39,16 +191,21 @@ exports.getProduction = async (req, res) => {
       totalPieces += r.pieces;
     });
 
-    // Build complete 8-hour view
-    const hours = STANDARD_HOURS.map((slot) => {
+    // Build complete 8-hour view with dynamic slot times and timeStatus
+    const hours = shiftInfo.slots.map((slot) => {
       const rec = recordMap[slot.hourNumber];
+      const slotMetric = shiftMetrics.slotMetrics[slot.hourNumber - 1] || {};
       return {
         hourNumber: slot.hourNumber,
         hourTime: slot.hourTime,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
         pieces: rec ? rec.pieces : 0,
         isRecorded: !!rec,
         notes: rec ? rec.notes : '',
         id: rec ? rec._id : null,
+        timeStatus: slotMetric.timeStatus || 'upcoming', // 'completed' | 'ongoing' | 'upcoming'
+        isOngoing: slotMetric.timeStatus === 'ongoing',
       };
     });
 
@@ -56,7 +213,7 @@ exports.getProduction = async (req, res) => {
     const averagePerHour =
       completedHours > 0 ? Math.round(totalPieces / completedHours) : 0;
 
-    // 2. Calculate Monthly Production (current calendar month based on selected date or current month)
+    // Monthly pieces
     const now = new Date();
     const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const monthlyAgg = await Production.aggregate([
@@ -65,13 +222,13 @@ exports.getProduction = async (req, res) => {
     ]);
     const monthlyPieces = monthlyAgg.length > 0 ? monthlyAgg[0].total : 0;
 
-    // 3. Calculate All-Time Production (sum of all recorded dates since tracking began)
+    // All-time pieces
     const allTimeAgg = await Production.aggregate([
       { $group: { _id: null, total: { $sum: '$pieces' } } },
     ]);
     const allTimePieces = allTimeAgg.length > 0 ? allTimeAgg[0].total : 0;
 
-    // 4. Fetch today's expenses and sales revenue for dashboard integration
+    // Expenses & Sales Revenue
     const dayExpenses = await Expense.find({ date });
     const todayExpenses = dayExpenses.reduce((sum, item) => sum + item.amount, 0);
 
@@ -83,10 +240,20 @@ exports.getProduction = async (req, res) => {
     res.json({
       success: true,
       date,
-      totalPieces,       // Today's production
+      shiftStartTime: shiftInfo.startTime,
+      shiftEndTime: shiftInfo.endTime,
+      shiftHours: shiftInfo.shiftHours,
+      shiftStatus: shiftMetrics.status,
+      shiftElapsedMinutes: shiftMetrics.elapsedMinutes,
+      shiftRemainingMinutes: shiftMetrics.remainingMinutes,
+      shiftElapsedFormatted: shiftMetrics.elapsedFormatted,
+      shiftRemainingFormatted: shiftMetrics.remainingFormatted,
+      shiftProgressPercent: shiftMetrics.progressPercent,
+      currentSlotNumber: shiftMetrics.currentSlotNumber,
+      totalPieces,
       todayPieces: totalPieces,
-      monthlyPieces,     // Current month's production
-      allTimePieces,     // All-time production
+      monthlyPieces,
+      allTimePieces,
       currentMonthLabel: currentMonthPrefix,
       completedHours,
       averagePerHour,
@@ -96,6 +263,57 @@ exports.getProduction = async (req, res) => {
       estimatedProfit,
       hours,
       records,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// POST /api/production/shift - Set or update the actual shift start time for a date
+exports.setDailyShift = async (req, res) => {
+  try {
+    const { date, startTime, shiftHours = 8 } = req.body;
+    if (!date) {
+      return res.status(400).json({ success: false, message: 'Date is required (YYYY-MM-DD)' });
+    }
+
+    const cleanStart = normalizeTime(startTime, '08:00');
+    const shiftInfo = computeShiftTimeDetails(cleanStart, Number(shiftHours) || 8);
+
+    const shiftDoc = await DailyShift.findOneAndUpdate(
+      { date },
+      {
+        date,
+        startTime: cleanStart,
+        shiftHours: shiftInfo.shiftHours,
+        endTime: shiftInfo.endTime,
+      },
+      { returnDocument: 'after', upsert: true, runValidators: true }
+    );
+
+    // Update existing production records on this date to synchronize slot hourTimes
+    for (const slot of shiftInfo.slots) {
+      await Production.updateMany(
+        { date, hourNumber: slot.hourNumber },
+        { $set: { hourTime: slot.hourTime } }
+      );
+    }
+
+    const shiftMetrics = computeShiftMetrics(date, cleanStart, shiftInfo.shiftHours);
+
+    res.json({
+      success: true,
+      message: `Shift start time for ${date} updated to ${cleanStart} (Ends at ${shiftInfo.endTime})`,
+      data: shiftDoc,
+      shiftStartTime: shiftInfo.startTime,
+      shiftEndTime: shiftInfo.endTime,
+      shiftHours: shiftInfo.shiftHours,
+      shiftStatus: shiftMetrics.status,
+      shiftElapsedFormatted: shiftMetrics.elapsedFormatted,
+      shiftRemainingFormatted: shiftMetrics.remainingFormatted,
+      shiftProgressPercent: shiftMetrics.progressPercent,
+      currentSlotNumber: shiftMetrics.currentSlotNumber,
+      slots: shiftInfo.slots,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -138,13 +356,48 @@ exports.getProductionHistory = async (req, res) => {
       { $sort: { _id: -1 } }, // Newest date first
     ]);
 
-    const days = dayGroups.map((d) => ({
-      date: d._id,
-      totalPieces: d.totalPieces,
-      hoursCount: d.hoursCount,
-      averagePerHour: d.hoursCount > 0 ? Math.round(d.totalPieces / d.hoursCount) : 0,
-      records: d.records.sort((a, b) => a.hourNumber - b.hourNumber),
-    }));
+    const dates = dayGroups.map((d) => d._id);
+    const shifts = await DailyShift.find({ date: { $in: dates } });
+    const shiftMap = {};
+    shifts.forEach((s) => {
+      shiftMap[s.date] = s;
+    });
+
+    const days = dayGroups.map((d) => {
+      const recordsSorted = d.records.sort((a, b) => a.hourNumber - b.hourNumber);
+      const savedShift = shiftMap[d._id];
+
+      let shiftStartTime = savedShift ? savedShift.startTime : '';
+      let shiftEndTime = savedShift ? savedShift.endTime : '';
+
+      // If no saved shift, deduce from records
+      if (!shiftStartTime && recordsSorted.length > 0) {
+        const r1 = recordsSorted[0];
+        if (r1.hourTime && r1.hourTime.includes('-')) {
+          const parts = r1.hourTime.split('-');
+          shiftStartTime = parts[0].trim();
+          const rLast = recordsSorted[recordsSorted.length - 1];
+          if (rLast && rLast.hourTime && rLast.hourTime.includes('-')) {
+            shiftEndTime = rLast.hourTime.split('-')[1].trim();
+          }
+        }
+      }
+
+      if (!shiftStartTime) {
+        shiftStartTime = '08:00';
+        shiftEndTime = '16:00';
+      }
+
+      return {
+        date: d._id,
+        shiftStartTime,
+        shiftEndTime,
+        totalPieces: d.totalPieces,
+        hoursCount: d.hoursCount,
+        averagePerHour: d.hoursCount > 0 ? Math.round(d.totalPieces / d.hoursCount) : 0,
+        records: recordsSorted,
+      };
+    });
 
     const periodTotalPieces = days.reduce((sum, d) => sum + d.totalPieces, 0);
 
@@ -169,7 +422,7 @@ exports.getProductionHistory = async (req, res) => {
 // POST /api/production
 exports.createOrUpdateProduction = async (req, res) => {
   try {
-    const { date, hourNumber, pieces, notes = '', hourTime } = req.body;
+    const { date, hourNumber, pieces, notes = '', hourTime, shiftStartTime } = req.body;
 
     if (!date) {
       return res.status(400).json({ success: false, message: 'Date is required (YYYY-MM-DD)' });
@@ -182,8 +435,15 @@ exports.createOrUpdateProduction = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Pieces produced must be 0 or greater' });
     }
 
-    const standardSlot = STANDARD_HOURS.find((s) => s.hourNumber === parsedHour);
-    const slotTimeLabel = hourTime || (standardSlot ? standardSlot.hourTime : `Hour ${parsedHour}`);
+    // Determine the slot time label based on DailyShift or provided start time
+    let slotTimeLabel = hourTime;
+    if (!slotTimeLabel) {
+      let dailyShift = await DailyShift.findOne({ date });
+      let start = shiftStartTime || (dailyShift ? dailyShift.startTime : '08:00');
+      const shiftInfo = computeShiftTimeDetails(start, 8);
+      const slot = shiftInfo.slots.find((s) => s.hourNumber === parsedHour);
+      slotTimeLabel = slot ? slot.hourTime : `Hour ${parsedHour}`;
+    }
 
     const record = await Production.findOneAndUpdate(
       { date, hourNumber: parsedHour },
@@ -279,12 +539,20 @@ exports.deleteDayProduction = async (req, res) => {
   try {
     const { date } = req.params;
     const result = await Production.deleteMany({ date });
+    await DailyShift.deleteOne({ date });
     res.json({
       success: true,
-      message: `All production records for ${date} deleted successfully`,
+      message: `All production records and shift settings for ${date} deleted successfully`,
       deletedCount: result.deletedCount,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
+};
+
+// Export utility functions for unit testing
+exports._testUtils = {
+  computeShiftTimeDetails,
+  computeShiftMetrics,
+  normalizeTime,
 };
