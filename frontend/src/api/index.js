@@ -1,4 +1,15 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+const rawBase = import.meta.env.VITE_API_BASE_URL || 'https://suresh-machina.onrender.com/api';
+
+const getBaseUrl = () => {
+  if (!rawBase) return 'https://suresh-machina.onrender.com/api';
+  const clean = rawBase.trim().replace(/\/+$/, '');
+  if (clean === '/api' || clean.endsWith('/api')) {
+    return clean;
+  }
+  return `${clean}/api`;
+};
+
+const API_BASE = getBaseUrl();
 
 async function request(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;

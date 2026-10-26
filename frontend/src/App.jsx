@@ -7,7 +7,6 @@ import {
   Calendar,
   CalendarRange,
   Award,
-  PlusCircle,
   Edit2,
   Trash2,
   CheckCircle2,
@@ -445,8 +444,8 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 1. THREE SEPARATE PRODUCTION SUMMARY CARDS (Today, Monthly, All-Time) */}
-              <div className="summary-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: '1.25rem' }}>
+              {/* UNIFIED 6-CARD METRICS GRID */}
+              <div className="dashboard-metrics-grid">
                 {/* 1. Today's Production */}
                 <div className="summary-card card-production">
                   <div className="card-top">
@@ -464,77 +463,40 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 2. Monthly Production */}
-                <div className="summary-card card-month">
-                  <div className="card-top">
-                    <span className="summary-label">Monthly Production</span>
-                    <div className="card-icon-wrap icon-month">
-                      <CalendarRange size={18} />
-                    </div>
-                  </div>
-                  <div className="summary-value value-month">
-                    <AnimatedNumber value={monthlyPieces} suffix=" pcs" />
-                  </div>
-                  <div className="card-bottom">
-                    <span className="badge-tag tag-month">Current Month</span>
-                    <span className="card-subtext">{formatMonthName(currentMonthLabel)}</span>
-                  </div>
-                </div>
-
-                {/* 3. All-Time Production */}
-                <div className="summary-card card-alltime">
-                  <div className="card-top">
-                    <span className="summary-label">All-Time Production</span>
-                    <div className="card-icon-wrap icon-alltime">
-                      <Award size={18} />
-                    </div>
-                  </div>
-                  <div className="summary-value value-alltime">
-                    <AnimatedNumber value={allTimePieces} suffix=" pcs" />
-                  </div>
-                  <div className="card-bottom">
-                    <span className="badge-tag tag-alltime">Total Lifetime Output</span>
-                    <span className="card-subtext">Cumulative across all saved dates</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. OPERATIONAL & FINANCIAL CARDS (Shift Progress, Expenses, Profit) */}
-              <div className="summary-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: '1.75rem' }}>
-                {/* Shift Hours Completed */}
+                {/* 2. Shift Hours Completed */}
                 <div className="summary-card card-shift">
                   <div className="card-top">
-                    <span className="summary-label">8-Hour Shift Progress</span>
+                    <span className="summary-label">Shift Hours Completed</span>
                     <div className="card-icon-wrap icon-shift">
                       <Clock size={18} />
                     </div>
                   </div>
-                  <div className="summary-value value-shift" style={{ fontSize: '1.65rem' }}>
-                    {completedHours}/8 <span className="unit">hours logged</span>
-                  </div>
-                  <div className="card-progress-area">
-                    <div className="progress-bar-bg">
+                  <div>
+                    <div className="summary-value value-shift">
+                      {completedHours}/8 <span className="unit">hours</span>
+                    </div>
+                    <div className="progress-bar-bg" style={{ marginTop: '0.2rem', marginBottom: '0.35rem' }}>
                       <div
                         className="progress-bar-fill fill-shift"
                         style={{ width: `${shiftProgressPercent}%` }}
                       />
                     </div>
-                    <div className="progress-label-row">
-                      <span>
-                        {shiftStatus === 'ongoing'
-                          ? `${shiftElapsedFormatted} elapsed (${shiftRemainingFormatted} left)`
-                          : shiftStatus === 'completed'
-                          ? 'Shift complete (8h)'
-                          : 'Shift upcoming'}
-                      </span>
-                      <span className="avg-speed-badge">
-                        Avg: {averagePerHour.toLocaleString('en-IN')} pcs/hr
-                      </span>
-                    </div>
+                  </div>
+                  <div className="card-bottom">
+                    <span className="badge-tag tag-shift">
+                      {shiftStatus === 'ongoing'
+                        ? `${shiftElapsedFormatted} elapsed`
+                        : shiftStatus === 'completed'
+                        ? 'Shift Finished'
+                        : 'Shift Upcoming'}
+                    </span>
+                    <span className="card-subtext">
+                      Avg: {averagePerHour.toLocaleString('en-IN')} pcs/hr
+                    </span>
                   </div>
                 </div>
 
-                {/* Today's Total Expenses */}
+                {/* 3. Today's Total Expenses */}
                 <div className="summary-card card-expenses">
                   <div className="card-top">
                     <span className="summary-label">Today's Total Expenses</span>
@@ -542,7 +504,7 @@ export default function App() {
                       <Receipt size={18} />
                     </div>
                   </div>
-                  <div className="summary-value value-expenses" style={{ fontSize: '1.65rem' }}>
+                  <div className="summary-value value-expenses">
                     <AnimatedNumber value={todayExpenses} prefix="₹" />
                   </div>
                   <div className="card-bottom card-bottom-actions">
@@ -556,7 +518,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Estimated Net Profit */}
+                {/* 4. Estimated Net Profit */}
                 <div className="summary-card card-profit">
                   <div className="card-top">
                     <span className="summary-label">Estimated Net Profit</span>
@@ -570,7 +532,6 @@ export default function App() {
                       <div
                         className="summary-value value-profit"
                         style={{
-                          fontSize: '1.65rem',
                           color: estimatedProfit >= 0 ? '#34d399' : '#fb7185',
                         }}
                       >
@@ -596,7 +557,7 @@ export default function App() {
                     </>
                   ) : (
                     <>
-                      <div className="summary-value value-not-recorded" style={{ fontSize: '1.4rem' }}>
+                      <div className="summary-value value-not-recorded">
                         Not Recorded
                       </div>
                       <div className="card-bottom card-bottom-actions">
@@ -613,6 +574,40 @@ export default function App() {
                       </div>
                     </>
                   )}
+                </div>
+
+                {/* 5. Monthly Production */}
+                <div className="summary-card card-month">
+                  <div className="card-top">
+                    <span className="summary-label">Monthly Production</span>
+                    <div className="card-icon-wrap icon-month">
+                      <CalendarRange size={18} />
+                    </div>
+                  </div>
+                  <div className="summary-value value-month">
+                    <AnimatedNumber value={monthlyPieces} suffix=" pcs" />
+                  </div>
+                  <div className="card-bottom">
+                    <span className="badge-tag tag-month">Current Month</span>
+                    <span className="card-subtext">{formatMonthName(currentMonthLabel)}</span>
+                  </div>
+                </div>
+
+                {/* 6. All-Time Production */}
+                <div className="summary-card card-alltime">
+                  <div className="card-top">
+                    <span className="summary-label">All-Time Production</span>
+                    <div className="card-icon-wrap icon-alltime">
+                      <Award size={18} />
+                    </div>
+                  </div>
+                  <div className="summary-value value-alltime">
+                    <AnimatedNumber value={allTimePieces} suffix=" pcs" />
+                  </div>
+                  <div className="card-bottom">
+                    <span className="badge-tag tag-alltime">Lifetime Output</span>
+                    <span className="card-subtext">Cumulative across all dates</span>
+                  </div>
                 </div>
               </div>
 
@@ -659,30 +654,97 @@ export default function App() {
                 </div>
               )}
 
-              {/* Hourly Production Entry Form */}
+              {/* Redesigned Hourly Production Entry Form */}
               <section className="card form-section">
                 <div className="section-header-row">
-                  <h2 className="section-title">
-                    {editingId ? `Edit Hour ${hourNumber} Record` : 'Record Hourly Output'}
-                  </h2>
-                  <span className="section-subtitle-tag">
-                    Slot: {hoursData.find((h) => h.hourNumber === hourNumber)?.hourTime || `Hour ${hourNumber}`}
-                  </span>
+                  <div>
+                    <h2 className="section-title">
+                      {editingId ? `Update Hour ${hourNumber} Production` : 'Record Hourly Output'}
+                    </h2>
+                    <span className="card-subtext" style={{ display: 'block', marginTop: '2px' }}>
+                      {editingId ? 'Modify existing piece count and operator roll notes' : 'Enter finished paper dona / pattal counts for this shift slot'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    <span className="section-subtitle-tag">
+                      Date: {selectedDate} • Hour {hourNumber} ({hoursData.find((h) => h.hourNumber === hourNumber)?.hourTime || `Hour ${hourNumber}`})
+                    </span>
+                    {editingId && (
+                      <span className="badge-tag" style={{ background: 'rgba(245, 158, 11, 0.18)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.35)' }}>
+                        Editing Mode
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 8-Hour Interactive Slot Selector Strip */}
+                <div className="hour-slot-picker-container">
+                  <div className="slot-picker-label">
+                    <span>Quick Select 8-Hour Slot:</span>
+                    <span className="label-hint">Click any slot to record or edit</span>
+                  </div>
+                  <div className="hour-slot-grid">
+                    {hoursData.map((h) => {
+                      const isSelected = h.hourNumber === hourNumber;
+                      const isLogged = h.isRecorded;
+                      const isActiveNow = h.timeStatus === 'ongoing';
+                      return (
+                        <div
+                          key={h.hourNumber}
+                          className={`slot-chip ${isSelected ? 'selected' : ''} ${isLogged ? 'is-logged' : 'is-pending'} ${isActiveNow ? 'is-active-now' : ''}`}
+                          onClick={() => {
+                            if (editingId && editingId !== h.id) {
+                              setEditingId(null);
+                            }
+                            setHourNumber(h.hourNumber);
+                            if (h.isRecorded) {
+                              handleEditProduction(h);
+                            } else {
+                              setPieces('');
+                              setNotes('');
+                            }
+                          }}
+                          title={`Hour ${h.hourNumber} (${h.hourTime}) - ${isLogged ? `${h.pieces} pcs recorded` : 'Pending'}`}
+                        >
+                          <span className="slot-chip-num">Hour {h.hourNumber}</span>
+                          <span className="slot-chip-time">{h.hourTime}</span>
+                          <span className="slot-chip-status">
+                            {isActiveNow && <span className="pulse-indicator-cyan" />}
+                            {isLogged ? `✓ ${h.pieces.toLocaleString('en-IN')} pcs` : isActiveNow ? 'Active Now' : 'Pending'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <form onSubmit={handleSubmitProduction} className="entry-form">
                   <div className="form-row">
                     <div className="form-group">
-                      <label className="label">Shift Hour Slot (1 to 8):</label>
+                      <label className="label" htmlFor="hourSelector">
+                        <span>Selected Shift Hour:</span>
+                        <span className="label-hint">8 hourly shift divisions</span>
+                      </label>
                       <select
+                        id="hourSelector"
                         className="input select"
                         value={hourNumber}
-                        onChange={(e) => setHourNumber(Number(e.target.value))}
-                        disabled={!!editingId}
+                        onChange={(e) => {
+                          const slotNum = Number(e.target.value);
+                          setHourNumber(slotNum);
+                          const matching = hoursData.find((h) => h.hourNumber === slotNum);
+                          if (matching && matching.isRecorded) {
+                            handleEditProduction(matching);
+                          } else {
+                            if (editingId) setEditingId(null);
+                            setPieces('');
+                            setNotes('');
+                          }
+                        }}
                       >
                         {hoursData.map((h) => {
-                          const timeLabel = h.timeStatus === 'ongoing' ? '● Active' : h.timeStatus === 'completed' ? 'Passed' : 'Upcoming';
-                          const recLabel = h.isRecorded ? '✓ Logged' : 'Pending';
+                          const timeLabel = h.timeStatus === 'ongoing' ? '● Active Now' : h.timeStatus === 'completed' ? 'Passed' : 'Upcoming';
+                          const recLabel = h.isRecorded ? `✓ Logged (${h.pieces} pcs)` : 'Pending';
                           return (
                             <option key={h.hourNumber} value={h.hourNumber}>
                               Hour {h.hourNumber} ({h.hourTime}) — [{timeLabel}] [{recLabel}]
@@ -693,25 +755,62 @@ export default function App() {
                     </div>
 
                     <div className="form-group">
-                      <label className="label">Pieces Produced (Dona / Pattal):</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        placeholder="e.g. 1250"
-                        className="input number-input"
-                        value={pieces}
-                        onChange={(e) => setPieces(e.target.value)}
-                        required
-                      />
+                      <label className="label" htmlFor="piecesInput">
+                        <span>Pieces Produced (Dona / Pattal):</span>
+                        <span className="label-hint">Finished units</span>
+                      </label>
+                      <div className="input-with-badge">
+                        <input
+                          id="piecesInput"
+                          type="number"
+                          min="0"
+                          step="1"
+                          placeholder="e.g. 1250"
+                          className="input number-input"
+                          value={pieces}
+                          onChange={(e) => setPieces(e.target.value)}
+                          required
+                        />
+                        <span className="input-badge">pcs</span>
+                      </div>
+                      {/* Ergonomic Quick Addition Chips for Operator Convenience */}
+                      <div className="quick-add-group">
+                        <span className="label-hint" style={{ marginRight: '4px' }}>Quick Add:</span>
+                        {[100, 250, 500, 1000].map((delta) => (
+                          <button
+                            key={delta}
+                            type="button"
+                            className="quick-add-btn"
+                            onClick={() => {
+                              const curr = Number(pieces) || 0;
+                              setPieces(String(curr + delta));
+                            }}
+                          >
+                            +{delta.toLocaleString('en-IN')}
+                          </button>
+                        ))}
+                        {pieces && (
+                          <button
+                            type="button"
+                            className="quick-add-btn quick-add-clear"
+                            onClick={() => setPieces('')}
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
                   <div className="form-group">
-                    <label className="label">Operator Remarks / Roll Info (Optional):</label>
+                    <label className="label" htmlFor="operatorNotes">
+                      <span>Operator Remarks / Roll & Machine Info (Optional):</span>
+                      <span className="label-hint">GSM, heater temperature, batch notes</span>
+                    </label>
                     <input
+                      id="operatorNotes"
                       type="text"
-                      placeholder="e.g. 120 GSM Silver Roll loaded, heater temperature 140°C"
+                      placeholder="e.g. 120 GSM Silver Roll loaded, heater temperature 140°C, die clean"
                       className="input text-input"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
@@ -720,7 +819,8 @@ export default function App() {
 
                   <div className="form-actions">
                     <button type="submit" className="btn btn-primary">
-                      {editingId ? 'Update Hour Record' : 'Save Hourly Production'}
+                      <CheckCircle2 size={18} />
+                      {editingId ? `Update Hour ${hourNumber} Production` : `Save Hour ${hourNumber} Production`}
                     </button>
 
                     {editingId && (

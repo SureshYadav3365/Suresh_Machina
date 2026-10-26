@@ -190,7 +190,7 @@ export default function ProductionHistoryPage({ onSelectDateForDashboard, onProd
       )}
 
       {/* Production History Summary Cards */}
-      <div className="summary-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+      <div className="summary-grid">
         <div className="summary-card card-production">
           <div className="card-top">
             <span className="summary-label">Selected Period Production</span>

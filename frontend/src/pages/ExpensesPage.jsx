@@ -3,14 +3,11 @@ import {
   Receipt,
   Calendar,
   Filter,
-  PlusCircle,
   Edit2,
   Trash2,
   CheckCircle2,
   AlertCircle,
   TrendingDown,
-  Layers,
-  ArrowRight,
 } from 'lucide-react';
 import { api } from '../api';
 import AnimatedNumber from '../components/AnimatedNumber';
@@ -24,6 +21,25 @@ const CATEGORIES = [
   'Transportation',
   'Other Expenses',
 ];
+
+const getCategoryClass = (cat) => {
+  switch (cat) {
+    case 'Electricity Bill':
+      return 'cat-electricity';
+    case 'Worker/Labour Wages':
+      return 'cat-labor';
+    case 'Packaging Materials':
+      return 'cat-packaging';
+    case 'Raw Materials':
+      return 'cat-raw';
+    case 'Machine Repair and Maintenance':
+      return 'cat-repairs';
+    case 'Transportation':
+      return 'cat-transport';
+    default:
+      return 'cat-other';
+  }
+};
 
 export default function ExpensesPage({ onExpenseChange }) {
   const getTodayStr = () => {
@@ -206,14 +222,14 @@ export default function ExpensesPage({ onExpenseChange }) {
           </div>
         </div>
 
-        <div className="summary-card card-shift">
+        <div className="summary-card card-expenses-week">
           <div className="card-top">
             <span className="summary-label">This Week's Expenses</span>
-            <div className="card-icon-wrap icon-shift">
+            <div className="card-icon-wrap icon-expenses-week">
               <Calendar size={18} />
             </div>
           </div>
-          <div className="summary-value value-shift">
+          <div className="summary-value value-expenses-week">
             <AnimatedNumber value={summary.thisWeekTotal} prefix="₹" />
           </div>
           <div className="card-bottom">
@@ -221,14 +237,14 @@ export default function ExpensesPage({ onExpenseChange }) {
           </div>
         </div>
 
-        <div className="summary-card card-production">
+        <div className="summary-card card-expenses-month">
           <div className="card-top">
             <span className="summary-label">This Month's Expenses</span>
-            <div className="card-icon-wrap icon-production">
+            <div className="card-icon-wrap icon-expenses-month">
               <TrendingDown size={18} />
             </div>
           </div>
-          <div className="summary-value value-production">
+          <div className="summary-value value-expenses-month">
             <AnimatedNumber value={summary.thisMonthTotal} prefix="₹" />
           </div>
           <div className="card-bottom">
@@ -312,16 +328,19 @@ export default function ExpensesPage({ onExpenseChange }) {
           <div className="form-row">
             <div className="form-group">
               <label className="label">Amount in Indian Rupees (₹):</label>
-              <input
-                type="number"
-                min="0.01"
-                step="any"
-                placeholder="e.g. 4500"
-                className="input number-input"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                required
-              />
+              <div className="input-with-badge">
+                <input
+                  type="number"
+                  min="0.01"
+                  step="any"
+                  placeholder="e.g. 4500"
+                  className="input number-input"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  required
+                />
+                <span className="input-badge" style={{ color: '#fb7185' }}>₹</span>
+              </div>
             </div>
 
             <div className="form-group">
@@ -339,7 +358,8 @@ export default function ExpensesPage({ onExpenseChange }) {
 
           <div className="form-actions">
             <button type="submit" className="btn btn-primary">
-              {editingId ? 'Update Expense' : 'Save Expense Record'}
+              <CheckCircle2 size={18} />
+              {editingId ? 'Update Expense Record' : 'Save Expense Record'}
             </button>
 
             {editingId && (
@@ -442,7 +462,9 @@ export default function ExpensesPage({ onExpenseChange }) {
                   <tr key={item._id}>
                     <td style={{ fontWeight: 600 }}>{item.date}</td>
                     <td>
-                      <span className="category-pill">{item.category}</span>
+                      <span className={`category-pill ${getCategoryClass(item.category)}`}>
+                        {item.category}
+                      </span>
                     </td>
                     <td>{item.description}</td>
                     <td className="pieces-cell">
@@ -476,7 +498,7 @@ export default function ExpensesPage({ onExpenseChange }) {
                   <td colSpan="3" className="total-label">
                     Total Filtered Expenses:
                   </td>
-                  <td className="total-pieces" style={{ color: '#dc2626' }}>
+                  <td className="total-pieces" style={{ color: '#fb7185', textShadow: '0 0 16px rgba(251, 113, 133, 0.4)' }}>
                     ₹{summary.filteredTotal.toLocaleString('en-IN')}
                   </td>
                   <td className="total-note">
